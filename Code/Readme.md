@@ -13,6 +13,8 @@ ICM42688P的主要代码,陀螺仪的主体结构
 ## Madgwick
 Madgwick方法解算欧拉角,存在一定Bug,但能用
 
+函数主体是来自一位知乎博主,但是我现在已经找不到了,如果该大佬要求删改,请联系我
+
 ## QMC5883P
 QMC5883P的CPP版本,如需C语言版本,可以参考 https://github.com/Zodiak-321/Neigungssensor/tree/main/Sensors/QMC5883P/c
 
