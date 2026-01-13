@@ -18,7 +18,7 @@ Madgwick方法解算欧拉角,存在一定Bug,但能用
 uint32_t EULER::getTick(void)
 {
 	// return HAL_GetTick();
-  // 你的获取系统时钟函数,单位是ms
+    // 你的获取系统时钟函数,单位是ms
 }
 ```
 
