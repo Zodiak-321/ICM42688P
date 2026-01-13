@@ -21,8 +21,10 @@ QMC5883P的CPP版本,如需C语言版本,可以参考 https://github.com/Zodiak-
 ## debug
 一个简单的Debug文件,加入后可以对ICM42688P的输出信息进行打印,可以看到设置信息,也有宏定义可以直接关掉,具体可以见ICM的Readme部分
 
+有更好的版本可以参考 https://github.com/WilliTourt/STM32-Elegant-Debug
+
 也可以直接用printf
 
 ![94a5182c8e54f5e1c7da55e1a775446b_720](https://github.com/user-attachments/assets/14115864-7588-4dfd-9a3d-4c7d122b6830)
 
-(belike)
+(belike)(原谅我直接使用手机拍的屏幕)
