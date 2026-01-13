@@ -5,7 +5,7 @@ QMC5883P的CPP版本,如需C语言版本,可以参考 https://github.com/Zodiak-
 
 ## 使用方法
 '''C
-printf();
+  printf();
 '''
 
 ## 注意
