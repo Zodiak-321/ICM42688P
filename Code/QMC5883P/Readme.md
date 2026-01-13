@@ -6,6 +6,7 @@ QMC5883P的CPP版本,如需C语言版本,可以参考 https://github.com/Zodiak-
 ## 使用方法
 ### 初始化
 首先需要明确的一点是,QMC5883P仅支持I2C通信,所以需要确定你STM32确实有开启I2C且在进行HAL库代码生成是有开启代码文件单独生成
+
 <img width="659" height="80" alt="image" src="https://github.com/user-attachments/assets/17d05c3f-4eab-419b-b188-3ac5d4acaf5b" />
 
 
