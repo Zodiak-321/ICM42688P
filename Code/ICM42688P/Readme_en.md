@@ -1,4 +1,4 @@
-# ICM42688P Driver Library - Detailed Documentation (English Version)
+# ICM42688P Driver Library - Detailed Documentation
 
 [中文](Readme.md) | [English](Readme_en.md)
 
