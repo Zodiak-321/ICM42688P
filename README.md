@@ -1,6 +1,6 @@
 # 简介
 
-[中文](README.md) | [English](README_EN.md)
+[中文](Readme.md) | [English](Readme_en.md)
 
 本仓库是基于C++写的ICM42688P库,封装完整,使用方便
 
