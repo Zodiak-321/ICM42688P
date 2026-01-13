@@ -1,6 +1,6 @@
 # English Version
 
-[中文](README.md) | [English](README_EN.md)
+[中文](Readme.md) | [English](Readme_en.md)
 
 # Introduction
 
