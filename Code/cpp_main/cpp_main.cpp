@@ -5,13 +5,9 @@
 #include "Madgwick.h"
 #include "qmc5883p.h"
 
-int16_t ax;
 ICM42688::ICM42688_StatusTypeDef res_icm42688;
 ICM42688::General::StatusTypeDef res_general;
 ICM42688::INT::StatusTypeDef res_Int;
-
-uint8_t data_ready;
-uint8_t data_demo[50];
 
 ICM42688 icm42688(&hspi2, CS_GPIO_Port, CS_Pin);
 // ICM42688 icm42688(&hi2c1, 0x68);
@@ -30,8 +26,6 @@ void test(void* context)
     icm->general.read_data();
     euler.MadgwickAHRSupdateIMU(icm->general.get_ax(), icm->general.get_ay(), icm->general.get_az(),
                                  icm->general.get_gx(), icm->general.get_gy(), icm->general.get_gz());
-
-    data_ready = 1;
     // printf("%.3f,%.3f,%.3f\n", euler.get_pitch(), euler.get_roll(), euler.get_yaw());
     // printf("%f,%f,%f,%f\n", euler.get_q0(), euler.get_q1(), euler.get_q2(), euler.get_q3());
 }
@@ -39,37 +33,6 @@ void test(void* context)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     icm42688.Int.process_interrupts(static_cast<ICM42688::INT::INT_NUM>(icm42688.get_GPIO_PinNum(GPIO_Pin)));
-}
-
-void float_trans_int(float data, uint8_t* out)
-{
-    *out = (uint8_t)(((uint32_t)(data * 10000) & 0xFF000000) >> 24);
-    *(out + 1) = (uint8_t)(((uint32_t)(data * 10000) & 0x00FF0000) >> 16);
-    *(out + 2) = (uint8_t)(((uint32_t)(data * 10000) & 0x0000FF00) >> 8);
-    *(out + 3) = (uint8_t)((uint32_t)(data * 10000) & 0x000000FF);
-}
-
-// void int_trans_float(uint8_t* data, float* out)
-// {
-//     *out = ((float)(((uint32_t)*data) << 24 | ((uint32_t)*(data + 1)) << 16 | ((uint16_t)*(data + 2)) << 8 | *(data + 3))) / 10000.0f;
-// }
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if(htim == &htim4)
-    {
-        if(data_ready == 1)
-        {
-            data_ready = 0;
-            data_demo[0] = 0xAA;
-            float_trans_int(euler.get_pitch(), data_demo + 1);
-            float_trans_int(euler.get_roll(), data_demo + 5);
-            float_trans_int(euler.get_yaw(), data_demo + 9);
-            data_demo[13] = 0xFF;
-
-            HAL_UART_Transmit(&huart5, data_demo, 14, 0xFFFF);
-        } 
-    }
 }
 
 void cpp_main(void) 
@@ -133,8 +96,6 @@ void cpp_main(void)
         // icm42688.general.get_gx(), icm42688.general.get_gy(), icm42688.general.get_gz());
 
         // printf("%.3f,%.3f,%.3f\n", euler.get_pitch(), euler.get_roll(), euler.get_yaw());
-
-
 
         // HAL_Delay(1);
     }
