@@ -9,11 +9,24 @@ QMC5883P的CPP版本,如需C语言版本,可以参考 https://github.com/Zodiak-
 
 <img width="659" height="80" alt="image" src="https://github.com/user-attachments/assets/17d05c3f-4eab-419b-b188-3ac5d4acaf5b" />
 
-1. 在cpp_main.cpp(或者是你需要使用的地方)进行初始化
+1. 在cpp_main.cpp(或者是你需要使用的地方)进行类的初始化
 
 ```c++
 QMC5883P qmc5883p(&hi2c1, QMC5883P::QMC5883P_Mode::NORMAL);
 ```
+
+原型有一些default
+
+```c++
+QMC5883P(I2C_HandleTypeDef* hi2c, QMC5883P_Mode mode, QMC5883P_Spd spd = QMC5883P_Spd::ODR_50HZ,
+       QMC5883P_Rng rng = QMC5883P_Rng::RNG_2G);
+```
+
+对于其中的一些可选项,详细可以仔细看看.h中的一些定义
+
+2. 在cpp_main.cpp的最开始进行begin
+
+
 
 
 ## 注意
