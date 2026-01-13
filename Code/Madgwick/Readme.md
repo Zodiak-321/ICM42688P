@@ -56,7 +56,7 @@ void test(void* context)
 euler.MadgwickAHRSupdate(icm42688.general.get_ax(), icm42688.general.get_ay(), icm42688.general.get_az(),
             icm42688.general.get_gx(), icm42688.general.get_gy(), icm42688.general.get_gz(),
             qmc5883p.getX(), qmc5883p.getY(), qmc5883p.getZ());
-'''
+```
 
 3. 使用欧拉角或者四元数
 
