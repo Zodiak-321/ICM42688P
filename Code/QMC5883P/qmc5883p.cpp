@@ -70,10 +70,14 @@ QMC5883P::~QMC5883P() {}
  * @param reg Register address
  * @param data Pointer to data buffer
  * @param len Length of data
- * @return HAL_StatusTypeDef Status of I2C operation
+ * @return bool
  */
-bool QMC5883P::_i2cSend(uint8_t reg, uint8_t *data, uint8_t len) {
-    return HAL_I2C_Mem_Write(_hi2c, QMC5883P_ADDR << 1, reg, I2C_MEMADD_SIZE_8BIT, data, len, QMC5883P_READ_TIMEOUT_MS);
+bool QMC5883P::_i2cSend(uint8_t reg, uint8_t *data, uint8_t len) 
+{
+    if(HAL_I2C_Mem_Write(_hi2c, QMC5883P_ADDR << 1, reg, I2C_MEMADD_SIZE_8BIT, data, len, QMC5883P_READ_TIMEOUT_MS) == HAL_OK)
+        return true;
+    else
+        return false;
 }
 
 /**
@@ -82,10 +86,14 @@ bool QMC5883P::_i2cSend(uint8_t reg, uint8_t *data, uint8_t len) {
  * @param reg Register address
  * @param data Pointer to data buffer
  * @param len Length of data
- * @return HAL_StatusTypeDef Status of I2C operation
+ * @return bool
  */
-bool QMC5883P::_i2cRecv(uint8_t reg, uint8_t *data, uint8_t len) {
-    return HAL_I2C_Mem_Read(_hi2c, QMC5883P_ADDR << 1, reg, I2C_MEMADD_SIZE_8BIT, data, len, QMC5883P_READ_TIMEOUT_MS);
+bool QMC5883P::_i2cRecv(uint8_t reg, uint8_t *data, uint8_t len) 
+{
+    if(HAL_I2C_Mem_Read(_hi2c, QMC5883P_ADDR << 1, reg, I2C_MEMADD_SIZE_8BIT, data, len, QMC5883P_READ_TIMEOUT_MS) == HAL_OK)
+        return true;
+    else
+        return false;
 }
 
 void QMC5883P::Delay(uint32_t ms)
