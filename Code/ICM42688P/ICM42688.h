@@ -1196,7 +1196,7 @@ class ICM42688
 
         #ifdef HAL_I2C_MODULE_ENABLED
         I2C_HandleTypeDef* _hi2c = nullptr;
-        uint8_t _address = NULL;
+        uint8_t _address = 0xFF;
         #endif
 
         #ifdef HAL_SPI_MODULE_ENABLED
@@ -1205,7 +1205,7 @@ class ICM42688
 
         SPI_HandleTypeDef* _hspi = nullptr;
         GPIO_TypeDef* _cs_port = nullptr;
-        uint16_t _cs_pin = NULL;
+        uint16_t _cs_pin = 0xBEEF;
         #endif
 };
 
@@ -1304,4 +1304,3 @@ __weak void SLEEP_DET_callback(void* context);
 __weak void TAP_DET_callback(void* context);
 
 #endif
-
