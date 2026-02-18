@@ -94,9 +94,12 @@ void EULER::MadgwickAHRSupdateIMU(float ax, float ay, float az, float gx, float 
 	float ax_g = ax / g;
 	float ay_g = ay / g;
 	float az_g = az / g;
-	float gx_rad = gx * PI / 180.0f * 2 * PI;	// Warning: 这里是一个很奇怪的问题
-	float gy_rad = gy * PI / 180.0f * 2 * PI;	// 输入的角速度单位是°/s,然后先(* PI / 180)转换为rad/s以方便后续计算
-	float gz_rad = gz * PI / 180.0f * 2 * PI;	// 但是实际发现yaw轴转动90°角度只变换到大概14°左右,恰巧约为(2 * PI)倍数关系,说明以前的单位是转/s?或者是四元数计算公式有问题
+	// float gx_rad = gx * PI / 180.0f * 2 * PI;	// Warning: 这里是一个很奇怪的问题
+	// float gy_rad = gy * PI / 180.0f * 2 * PI;	// 输入的角速度单位是°/s,然后先(* PI / 180)转换为rad/s以方便后续计算
+	// float gz_rad = gz * PI / 180.0f * 2 * PI;	// 但是实际发现yaw轴转动90°角度只变换到大概14°左右,恰巧约为(2 * PI)倍数关系,说明以前的单位是转/s?或者是四元数计算公式有问题
+	float gx_rad = gx * PI / 180.0f;	// Warning: 这里是一个很奇怪的问题
+	float gy_rad = gy * PI / 180.0f;	// 但是在另一个项目里面测试的时候发现不需要这个,加上这个反而会导致角速度增益变大变错
+	float gz_rad = gz * PI / 180.0f;	// 建议是都可以试一下,哪个行就用哪个
 
 	float s0, s1, s2, s3;
 	float qDot1, qDot2, qDot3, qDot4;
@@ -110,6 +113,7 @@ void EULER::MadgwickAHRSupdateIMU(float ax, float ay, float az, float gx, float 
 
 	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
 	if(!((ax_g == 0.0f) && (ay_g == 0.0f) && (az_g == 0.0f))) {
+如果 （！（（ax_g == 0.0f） & （ay_g == 0.0f） & （az_g == 0.0f））） {  
 
 		// Normalise accelerometer measurement
 		Norm_Data(&ax_g,&ay_g,&az_g);
@@ -175,10 +179,13 @@ void EULER::MadgwickAHRSupdate(float ax, float ay, float az, float gx, float gy,
 	float ax_g = ax / g;
 	float ay_g = ay / g;
 	float az_g = az / g;
-	float gx_rad = gx * PI / 180.0f * 2 * PI;	// Warning: 这里是一个很奇怪的问题
-	float gy_rad = gy * PI / 180.0f * 2 * PI;	// 输入的角速度单位是°/s,然后先(* PI / 180)转换为rad/s以方便后续计算
-	float gz_rad = gz * PI / 180.0f * 2 * PI;	// 但是实际发现yaw轴转动90°角度只变换到大概14°左右,恰巧约为(2 * PI)倍数关系,说明以前的单位是转/s?或者是四元数计算公式有问题
-
+	// float gx_rad = gx * PI / 180.0f * 2 * PI;	// Warning: 这里是一个很奇怪的问题
+	// float gy_rad = gy * PI / 180.0f * 2 * PI;	// 输入的角速度单位是°/s,然后先(* PI / 180)转换为rad/s以方便后续计算
+	// float gz_rad = gz * PI / 180.0f * 2 * PI;	// 但是实际发现yaw轴转动90°角度只变换到大概14°左右,恰巧约为(2 * PI)倍数关系,说明以前的单位是转/s?或者是四元数计算公式有问题
+	float gx_rad = gx * PI / 180.0f;	// Warning: 这里是一个很奇怪的问题
+	float gy_rad = gy * PI / 180.0f;	// 但是在另一个项目里面测试的时候发现不需要这个,加上这个反而会导致角速度增益变大变错
+	float gz_rad = gz * PI / 180.0f;	// 建议是都可以试一下,哪个行就用哪个
+	
     float s0, s1, s2, s3;
 	float qDot1, qDot2, qDot3, qDot4;
     float hx, hy;
@@ -252,3 +259,4 @@ void EULER::MadgwickAHRSupdate(float ax, float ay, float az, float gx, float gy,
 	// Normalise quaternion
 	Norm_Data_Q(&_q0,&_q1,&_q2,&_q3);
 }
+
