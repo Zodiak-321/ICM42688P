@@ -1,4 +1,6 @@
 #include "ICM42688.h"
+#include <cstdio>
+#include <cmath>
 
 //###########################################################################################################
 
@@ -6,7 +8,7 @@
 ICM42688::ICM42688(I2C_HandleTypeDef* hi2c,
                   uint8_t address,
                   ICM42688_MountingOrientation mounting)
-    : general(this), Int(this), fifo(this), _hi2c(hi2c), _address(address), _mounting(mounting)
+    : general(this), fifo(this), Int(this), _mounting(mounting), _hi2c(hi2c), _address(address)
 {
     if(_address != ICM42688_I2C_ADDR_LOW && _address != ICM42688_I2C_ADDR_HIGH)
         _is_right_address = false; // 错误地址
@@ -20,7 +22,7 @@ ICM42688::ICM42688(SPI_HandleTypeDef* hspi,
                   GPIO_TypeDef* cs_port,
                   uint16_t cs_pin,
                   ICM42688_MountingOrientation mounting)
-    : general(this), Int(this), fifo(this), _hspi(hspi), _cs_port(cs_port), _cs_pin(cs_pin), _mounting(mounting)
+    : general(this), fifo(this), Int(this), _mounting(mounting), _hspi(hspi), _cs_port(cs_port), _cs_pin(cs_pin)
 {
     _is_spi = true;
 }
@@ -409,7 +411,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
 
     if(M2F_enable == ICM42688_SWITCH::OPEN)
     {
-        reg_data = static_cast<uint8_t>(UIF_order) << 3 | 0x04;
+        reg_data = (static_cast<uint8_t>(UIF_order) << 3) | 0x04;
         res = writeReg(REG_ACCEL_CONFIG1, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
         #ifdef ENABLE_DEBUG
@@ -418,7 +420,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
     }
     else if(M2F_enable == ICM42688_SWITCH::CLOSE)
     {
-        reg_data = static_cast<uint8_t>(UIF_order) << 3 | 0x00;
+        reg_data = (static_cast<uint8_t>(UIF_order) << 3) | 0x00;
         res = writeReg(REG_ACCEL_CONFIG1, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
         #ifdef ENABLE_DEBUG
@@ -441,7 +443,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
     {
         res = readReg(REG_PWR_MGMT0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xFC | 0x03;
+        reg_data = (reg_data & 0xFC) | 0x03;
         res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
 
@@ -451,7 +453,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
 
         res = readReg(REG_GYRO_ACCEL_CONFIG0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0x0F | static_cast<uint8_t>(UIF_bw_LN) << 4;
+        reg_data = (reg_data & 0x0F) | (static_cast<uint8_t>(UIF_bw_LN) << 4);
         res = writeReg(REG_GYRO_ACCEL_CONFIG0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
 
@@ -477,7 +479,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
             res = writeReg(REG_ACCEL_CONFIG_STATIC3, &reg_data, 1);
             if(res != StatusTypeDef::OK) return res;
 
-            reg_data = (AAF_BITSHIFT & 0x0F) << 4 | (AAF_DELTSQR >> 8) & 0x0F;
+            reg_data = ((AAF_BITSHIFT & 0x0F) << 4) | ((AAF_DELTSQR >> 8) & 0x0F);
             res = writeReg(REG_ACCEL_CONFIG_STATIC4, &reg_data, 1);
             if(res != StatusTypeDef::OK) return res;
 
@@ -493,7 +495,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
         {
             res = readReg(REG_ACCEL_CONFIG_STATIC2, &reg_data, 1);
             if(res != StatusTypeDef::OK) return res;
-            reg_data = reg_data & 0xFE | 0x01;
+            reg_data = (reg_data & 0xFE) | 0x01;
             res = writeReg(REG_ACCEL_CONFIG_STATIC2, &reg_data, 1);
             if(res != StatusTypeDef::OK) return res;
 
@@ -513,7 +515,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
     {
         res = readReg(REG_PWR_MGMT0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xFC | 0x02;
+        reg_data = (reg_data & 0xFC) | 0x02;
         res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
 
@@ -523,7 +525,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
 
         res = readReg(REG_GYRO_ACCEL_CONFIG0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0x0F | static_cast<uint8_t>(UIF_bw_LP) << 4;
+        reg_data = (reg_data & 0x0F) | (static_cast<uint8_t>(UIF_bw_LP) << 4);
         res = writeReg(REG_GYRO_ACCEL_CONFIG0, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
 
@@ -561,7 +563,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
 
     res = readReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF3 | 0x0C;
+    reg_data = (reg_data & 0xF3) | 0x0C;
     res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -573,7 +575,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
     {
         res = readReg(REG_GYRO_CONFIG1, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xF0 | static_cast<uint8_t>(UIF_order) << 2 | 0x02;
+        reg_data = (reg_data & 0xF0) | (static_cast<uint8_t>(UIF_order) << 2) | 0x02;
         res = writeReg(REG_GYRO_CONFIG1, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
         #ifdef ENABLE_DEBUG
@@ -584,7 +586,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
     {
         res = readReg(REG_GYRO_CONFIG1, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xF0 | static_cast<uint8_t>(UIF_order) << 2 | 0x00;
+        reg_data = (reg_data & 0xF0) | (static_cast<uint8_t>(UIF_order) << 2) | 0x00;
         res = writeReg(REG_GYRO_CONFIG1, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
         #ifdef ENABLE_DEBUG
@@ -605,7 +607,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
 
     res = readReg(REG_GYRO_ACCEL_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF0 | static_cast<uint8_t>(UIF_bw);
+    reg_data = (reg_data & 0xF0) | (static_cast<uint8_t>(UIF_bw));
     res = writeReg(REG_GYRO_ACCEL_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -621,7 +623,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
     {
         res = readReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xFE | 0x00;
+        reg_data = (reg_data & 0xFE) | 0x00;
         res = writeReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
 
@@ -672,7 +674,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
         {
             res = readReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
             if(res != StatusTypeDef::OK) return res;
-            reg_data = reg_data & 0xFE | 0x01;
+            reg_data = (reg_data & 0xFE) | 0x01;
             res = writeReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
             if(res != StatusTypeDef::OK) return res;
 
@@ -694,7 +696,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
                 printf("NF_bw: %s%s%s%s.\n", COLOR_BRIGHT_MAGENTA, UNDERLINE, NF_BW_str[static_cast<uint8_t>(NF_bw)], COLOR_RESET);
             #endif
 
-            reg_data = NF_COSWZ_SEL_z << 5 | NF_COSWZ_SEL_y << 4 | NF_COSWZ_SEL_x << 3 | (NF_COSWZ_z >> 8) << 2 | (NF_COSWZ_y >> 8) << 1 | (NF_COSWZ_x >> 8);
+            reg_data = (NF_COSWZ_SEL_z << 5) | (NF_COSWZ_SEL_y << 4) | (NF_COSWZ_SEL_x << 3) | ((NF_COSWZ_z >> 8) << 2) | ((NF_COSWZ_y >> 8) << 1) | (NF_COSWZ_x >> 8);
             res = writeReg(REG_GYRO_CONFIG_STATIC9, &reg_data, 1);
             if(res != StatusTypeDef::OK) return res; 
 
@@ -723,7 +725,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
     {
         res = readReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xFE | 0x01;
+        reg_data = (reg_data & 0xFE) | 0x01;
         res = writeReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res; 
 
@@ -747,7 +749,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
     {
         res = readReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xFD | 0x00;
+        reg_data = (reg_data & 0xFD) | 0x00;
         res = writeReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res; 
 
@@ -759,7 +761,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
         res = writeReg(REG_GYRO_CONFIG_STATIC4, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res; 
 
-        reg_data = (AAF_BITSHIFT & 0x0F) << 4 | (AAF_DELTSQR >> 4) & 0x0F;
+        reg_data = ((AAF_BITSHIFT & 0x0F) << 4) | ((AAF_DELTSQR >> 4) & 0x0F);
         res = writeReg(REG_GYRO_CONFIG_STATIC4, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res; 
 
@@ -771,7 +773,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
     {
         res = readReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res;
-        reg_data = reg_data & 0xFD | 0x01;
+        reg_data = (reg_data & 0xFD) | 0x01;
         res = writeReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
         if(res != StatusTypeDef::OK) return res; 
 
@@ -1232,7 +1234,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, AC
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF8 | 0x00;
+    reg_data = (reg_data & 0xF8) | 0x00;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1306,7 +1308,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, AC
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF8 | 0x00;
+    reg_data = (reg_data & 0xF8) | 0x00;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1434,7 +1436,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, AC
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF8 | 0x00;
+    reg_data = (reg_data & 0xF8) | 0x00;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1483,7 +1485,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_acc(void)
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF8 | 0x07;
+    reg_data = (reg_data & 0xF8) | 0x07;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1497,7 +1499,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_acc(void)
 
     res = readReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xFC | 0x00;
+    reg_data = (reg_data & 0xFC) | 0x00;
     res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1511,7 +1513,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_acc(void)
 
     res = readReg(REG_ACCEL_CONFIG_STATIC2, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xFE | 0x01;
+    reg_data = (reg_data & 0xFE) | 0x01;
     res = writeReg(REG_ACCEL_CONFIG_STATIC2, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1547,7 +1549,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GY
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xC7 | 0x00;
+    reg_data = (reg_data & 0xC7) | 0x00;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1616,7 +1618,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GY
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xC7 | 0x00;
+    reg_data = (reg_data & 0xC7) | 0x00;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1741,7 +1743,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GY
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xC7 | 0x00;
+    reg_data = (reg_data & 0xC7) | 0x00;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1790,7 +1792,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_gyro(void)
 
     res = readReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xC7 | 0x38;
+    reg_data = (reg_data & 0xC7) | 0x38;
     res = writeReg(REG_SENSOR_CONFIG0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1804,7 +1806,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_gyro(void)
 
     res = readReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF3 | 0x00;
+    reg_data = (reg_data & 0xF3) | 0x00;
     res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1818,7 +1820,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_gyro(void)
 
     res = readReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xFC | 0x03;
+    reg_data = (reg_data & 0xFC) | 0x03;
     res = writeReg(REG_GYRO_CONFIG_STATIC2, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res; 
 
@@ -1850,7 +1852,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(TEMP_DLPF_BW DLP
 
     res = readReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xDF | 0x00;
+    reg_data = (reg_data & 0xDF) | 0x00;
     res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1860,7 +1862,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(TEMP_DLPF_BW DLP
 
     res = readReg(REG_GYRO_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0x1F | static_cast<uint8_t>(DLPF_bw) << 5;
+    reg_data = (reg_data & 0x1F) | static_cast<uint8_t>(DLPF_bw) << 5;
     res = writeReg(REG_GYRO_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1888,7 +1890,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(void)
 
     res = readReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xDF | 0x00;
+    reg_data = (reg_data & 0xDF) | 0x00;
     res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1900,7 +1902,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(void)
 
     res = readReg(REG_GYRO_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0x1F | static_cast<uint8_t>(DLPF_bw) << 5;
+    reg_data = (reg_data & 0x1F) | static_cast<uint8_t>(DLPF_bw) << 5;
     res = writeReg(REG_GYRO_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1924,7 +1926,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_temp(void)
 
     res = readReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xDF | 0x01;
+    reg_data = (reg_data & 0xDF) | 0x01;
     res = writeReg(REG_PWR_MGMT0, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -1942,7 +1944,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_tmst(TMST_RESOL resol
         printf("%sstarting enable the tmst.\n", PROCESS_TYPE);
     #endif
 
-    reg_data = static_cast<uint8_t>(resol) << 3 | 0x13;
+    reg_data = (static_cast<uint8_t>(resol) << 3) | 0x13;
     res = writeReg(REG_TMST_CONFIG, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -2202,20 +2204,18 @@ ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::writeReg(uint8_t reg, uint8_t* pda
 ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::enable(FIFO_MODE_1 fifo_mode_1, FIFO_MODE_2 fifo_mode_2, FIFO_MODE_3 fifo_mode_3, ICM42688_SWITCH acc_enable, ICM42688_SWITCH gyro_enable, ICM42688_SWITCH temp_enable, ICM42688_SWITCH timestamp_enable)
 {
     StatusTypeDef res = StatusTypeDef::OK;
-    uint8_t reg_data = 0;
 
+    (void)fifo_mode_1; (void)fifo_mode_2; (void)fifo_mode_3; (void)acc_enable; (void)gyro_enable; (void)temp_enable; (void)timestamp_enable;
 
     return res;
-}
+} 
 
 ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::disable(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
-    uint8_t reg_data = 0;
-
 
     return res;
-}
+} 
 
 
 
@@ -2402,7 +2402,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int_source(INT_NUM int_num, IntE
 
     res = readReg(reg_addr, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & (0xFF & ~(1 << bit_pos)) | (enable ? 1 : 0) << bit_pos;
+    reg_data = (reg_data & (0xFF & ~(1 << bit_pos))) | ((enable ? 1 : 0) << bit_pos);
     res = writeReg(reg_addr, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -2464,7 +2464,7 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::INT::begin(void)
 
     res = readReg(REG_INT_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
-    reg_data = reg_data & 0xF7 | 0x01;
+    reg_data = (reg_data & 0xF7) | 0x01;
     res = writeReg(REG_INT_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
 
@@ -2472,7 +2472,7 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::INT::begin(void)
 
     res = readReg(REG_INT_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
-    reg_data = reg_data & 0xF7 | 0x00;
+    reg_data = (reg_data & 0xF7) | 0x00;
     res = writeReg(REG_INT_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
 
@@ -2503,7 +2503,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int_latchClear_mode(CLEAR_MODE D
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
 
-    reg_data = static_cast<uint8_t>(DRDY_clear_mode) << 4 | static_cast<uint8_t>(FIFO_THS_clear_mode) << 2 | static_cast<uint8_t>(FIFO_FULL_clear_mode);
+    reg_data = (static_cast<uint8_t>(DRDY_clear_mode) << 4) | (static_cast<uint8_t>(FIFO_THS_clear_mode) << 2) | static_cast<uint8_t>(FIFO_FULL_clear_mode);
     res = writeReg(REG_INT_CONFIG1, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -2535,7 +2535,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int1_pin_cfg(GPIO_TypeDef* int1_
 
     res = readReg(REG_INT_CONFIG, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xF8 | static_cast<uint8_t>(level) << 2 | static_cast<uint8_t>(drive) << 1 | static_cast<uint8_t>(mode);
+    reg_data = (reg_data & 0xF8) | (static_cast<uint8_t>(level) << 2) | (static_cast<uint8_t>(drive) << 1) | static_cast<uint8_t>(mode);
     res = writeReg(REG_INT_CONFIG, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -2571,7 +2571,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int2_pin_cfg(GPIO_TypeDef* int2_
 
     res = readReg(REG_INT_CONFIG, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
-    reg_data = reg_data & 0xC7 | static_cast<uint8_t>(level) << 5 | static_cast<uint8_t>(drive) << 4 | static_cast<uint8_t>(mode) << 3;
+    reg_data = (reg_data & 0xC7) | (static_cast<uint8_t>(level) << 5) | (static_cast<uint8_t>(drive) << 4) | (static_cast<uint8_t>(mode) << 3);
     res = writeReg(REG_INT_CONFIG, &reg_data, 1);
     if(res != StatusTypeDef::OK) return res;
 
@@ -2832,7 +2832,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::process_interrupts(INT_NUM int_num)
     ActiveEvent active_events[static_cast<size_t>(IntEvent::NUM_EVENTS)];
     uint8_t active_event_count = 0;
 
-    for(int i = 0; i < static_cast<size_t>(IntEvent::NUM_EVENTS); i++)
+    for (size_t i = 0; i < static_cast<size_t>(IntEvent::NUM_EVENTS); ++i)
     {
         EventInfo& info = _events[i];
 

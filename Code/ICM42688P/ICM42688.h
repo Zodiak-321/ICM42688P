@@ -1,7 +1,7 @@
 #ifndef __ICM42688_H__
 #define __ICM42688_H__
 
-#include "cpp_main.h"
+#include "main.h"
 #include "ICM42688_reg.h"
 
 // #define ENABLE_DEBUG
