@@ -1,262 +1,184 @@
-#include "Madgwick.h"
+#include "Movement.h"
 
-/*==============================================================================================*/
-/*=========================================Madgwick方法==========================================*/ 
-/*==============================================================================================*/
-
-uint32_t EULER::getTick(void)
+uint32_t MOVEMENT::_get_tick(void)
 {
-	return HAL_GetTick();
+    // Implementation for getting the current tick or time
+    return HAL_GetTick();
 }
 
-/*==============================================================================================*/
+/*============================================================================================*/
 
-float EULER::invSqrt(float x)
+MOVEMENT::MOVEMENT(MOVEMENT_MountingOrientation mounting)
+    : _mounting(mounting)
 {
-	float halfx = 0.5f * x;
-	float y = x;
-	long i = *(long*)&y;
-	i = 0x5f3759df - (i>>1);
-	y = *(float*)&i;
-	y = y * (1.5f - (halfx * y * y));
-	return y;
+    switch(mounting)
+    {
+        case MOVEMENT_MountingOrientation::MOUNT_Z_DOWN:
+            _fix_ax = 0.0f;
+            _fix_ay = 0.0f;
+            _fix_az = g;
+            break;
+        case MOVEMENT_MountingOrientation::MOUNT_Z_UP:
+            _fix_ax = 0.0f;
+            _fix_ay = 0.0f;
+            _fix_az = -g;
+            break;
+        case MOVEMENT_MountingOrientation::MOUNT_X_DOWN:
+            _fix_ax = g;
+            _fix_ay = 0.0f;
+            _fix_az = 0.0f;
+            break;
+        case MOVEMENT_MountingOrientation::MOUNT_X_UP:
+            _fix_ax = -g;
+            _fix_ay = 0.0f;
+            _fix_az = 0.0f;
+            break;
+        case MOVEMENT_MountingOrientation::MOUNT_Y_DOWN:
+            _fix_ax = 0.0f;
+            _fix_ay = g;
+            _fix_az = 0.0f;
+            break;
+        case MOVEMENT_MountingOrientation::MOUNT_Y_UP:
+            _fix_ax = 0.0f;
+            _fix_ay = -g;
+            _fix_az = 0.0f;
+            break;
+        default:
+            _fix_ax = 0.0f;
+            _fix_ay = 0.0f;
+            _fix_az = g;
+            break;
+    }
+
+    data.accel.accel = 0.0f;
+    data.accel.accel_axis.x = 0.0f;
+    data.accel.accel_axis.y = 0.0f;
+    data.accel.accel_axis.z = 0.0f;
+    data.accel.direction.x = 0.0f;
+    data.accel.direction.y = 0.0f;
+    data.accel.direction.z = 0.0f;
+
+    data.speed.speed = 0.0f;
+    data.speed.speed_axis.x = 0.0f;
+    data.speed.speed_axis.y = 0.0f;
+    data.speed.speed_axis.z = 0.0f;
+    data.speed.direction.x = 0.0f;
+    data.speed.direction.y = 0.0f;
+    data.speed.direction.z = 0.0f;
 }
 
-void EULER::Norm_Data(float *x,float *y,float *z)
+uint32_t MOVEMENT::_pow(uint8_t base, uint8_t exp)
 {
-	float recipNorm;
-
-	recipNorm = invSqrt(*x * *x + *y * *y + *z * *z);
-	*x *= recipNorm;
-	*y *= recipNorm;
-	*z *= recipNorm;
+    uint32_t result = 1;
+    for(uint8_t i = 0; i < exp; i++)
+        result *= base;
+    return result;
 }
 
-void EULER::Norm_Data_Q(float *w,float *x,float *y,float *z)
+float MOVEMENT::_save_n_float(uint8_t n, float value)
 {
-	float recipNorm;
-
-	recipNorm = invSqrt(*w * *w + *x * *x + *y * *y + *z * *z);
-	*w *= recipNorm;
-	*x *= recipNorm;
-	*y *= recipNorm;
-	*z *= recipNorm;
+    float result = (float)((int32_t)(value * _pow(10, n))) / _pow(10, n);
+    return result;
 }
 
-float EULER::lowPassFilter(float value, float last_value, uint8_t alpha_shift) 
+void MOVEMENT::_get_accel_IMU(float ax, float ay, float az, float pitch, float roll, float yaw)
 {
-	if(alpha_shift == 0)
-		return value;
+    float ax_corrected = 0;
+    float ay_corrected = 0;
+    float az_corrected = 0;
 
-    last_value = last_value + ((value - last_value) / pow(2 , alpha_shift));
+    float pitch_rad = pitch * PI / 180.0f;
+    float roll_rad = roll * PI / 180.0f;
+    float yaw_rad = yaw * PI / 180.0f;
 
-    return last_value * pow(2 , alpha_shift);
+    float sp = sinf(pitch_rad);
+    float cp = cosf(pitch_rad);
+    float sr = sinf(roll_rad);
+    float cr = cosf(roll_rad);
+    float sy = sinf(yaw_rad);
+    float cy = cosf(yaw_rad);
+
+    ax_corrected = cp * cy * ax + (sr * sp * cy - cr * sy) * ay + (cr * sp * cy + sr * sy) * az;
+    ay_corrected = cp * sy * ax + (sr * sp * sy + cr * cy) * ay + (cr * sp * sy - sr * cy) * az;
+    az_corrected = -sp * ax + sr * cp * ay + cr * cp * az;
+
+    ax_corrected -= _fix_ax;
+    ay_corrected -= _fix_ay;
+    az_corrected -= _fix_az;
+
+    data.accel.accel_axis.x = _save_n_float(2, ax_corrected);
+    data.accel.accel_axis.y = _save_n_float(2, ay_corrected);
+    data.accel.accel_axis.z = _save_n_float(2, az_corrected);
+
+    data.accel.accel = _save_n_float(2, sqrtf(ax_corrected * ax_corrected + ay_corrected * ay_corrected + az_corrected * az_corrected));
+
+    data.accel.direction.x = ax_corrected / data.accel.accel;
+    data.accel.direction.y = ay_corrected / data.accel.accel;
+    data.accel.direction.z = az_corrected / data.accel.accel;
 }
 
-//--------------------------------------Madgwick算法-------------------------------------------------------------
-// IMU algorithm update
-
-EULER::EULER(void)
+void MOVEMENT::_get_accel_IMU(float ax, float ay, float az, float q0, float q1, float q2, float q3)
 {
-	_betaDef = 0.88f;
-	_last_time = getTick();
+    float ax_corrected = 0;
+    float ay_corrected = 0;
+    float az_corrected = 0;
 
-	_q0 = 1.0f;
-	_q1 = 0.0f;
-	_q2 = 0.0f;
-	_q3 = 0.0f;
+    ax_corrected = (1 - 2*q2*q2 - 2*q3*q3) * ax
+             + (2*q1*q2 - 2*q3*q0) * ay
+             + (2*q1*q3 + 2*q2*q0) * az;
+
+    ay_corrected = (2*q1*q2 + 2*q3*q0) * ax
+             + (1 - 2*q1*q1 - 2*q3*q3) * ay
+             + (2*q2*q3 - 2*q1*q0) * az;
+
+    az_corrected = (2*q1*q3 - 2*q2*q0) * ax
+             + (2*q2*q3 + 2*q1*q0) * ay
+             + (1 - 2*q1*q1 - 2*q2*q2) * az;
+
+    ax_corrected -= _fix_ax;
+    ay_corrected -= _fix_ay;
+    az_corrected -= _fix_az;
+
+    data.accel.accel_axis.x = _save_n_float(2, ax_corrected);
+    data.accel.accel_axis.y = _save_n_float(2, ay_corrected);
+    data.accel.accel_axis.z = _save_n_float(2, az_corrected);
+
+    data.accel.accel = _save_n_float(2, sqrtf(ax_corrected * ax_corrected + ay_corrected * ay_corrected + az_corrected * az_corrected));
+
+    data.accel.direction.x = ax_corrected / data.accel.accel;
+    data.accel.direction.y = ay_corrected / data.accel.accel;
+    data.accel.direction.z = az_corrected / data.accel.accel;
 }
 
-EULER::EULER(float betaDef) 
-	: _betaDef(betaDef)
+void MOVEMENT::_get_speed_IMU(void)
 {
-	_last_time = getTick();
+    static uint32_t last_tick = 0;
+    uint32_t current_tick = _get_tick();
+    float dt = (current_tick - last_tick) / 1000.0f;
+    last_tick = current_tick;
 
-	_q0 = 1.0f;
-	_q1 = 0.0f;
-	_q2 = 0.0f;
-	_q3 = 0.0f;
+    data.speed.speed_axis.x += _save_n_float(2, data.accel.accel_axis.x * dt);
+    data.speed.speed_axis.y += _save_n_float(2, data.accel.accel_axis.y * dt);
+    data.speed.speed_axis.z += _save_n_float(2, data.accel.accel_axis.z * dt);
+
+    data.speed.speed = _save_n_float(2, sqrtf(data.speed.speed_axis.x * data.speed.speed_axis.x + data.speed.speed_axis.y * data.speed.speed_axis.y + data.speed.speed_axis.z * data.speed.speed_axis.z));
+
+    data.speed.direction.x = data.speed.speed_axis.x / data.speed.speed;
+    data.speed.direction.y = data.speed.speed_axis.y / data.speed.speed;
+    data.speed.direction.z = data.speed.speed_axis.z / data.speed.speed;
 }
 
-/*
- * name:无磁力计Madgwick方法
- * func:无磁力计下的Madgwick方法,用于计算姿态解算
- * in:acc[3]:角速度的x,y,z轴	gyro[3]:角速度的x,y,z轴
- * out:void
- * PS:未使用该方法的yaw轴
- *
- * */
-void EULER::MadgwickAHRSupdateIMU(float ax, float ay, float az, float gx, float gy, float gz)
+void MOVEMENT::update_IMU(float ax, float ay, float az, float pitch, float roll, float yaw)
 {
-	float dt = (getTick() - _last_time) / 1000.0f;
-	_last_time = getTick();
-
-	float ax_g = ax / g;
-	float ay_g = ay / g;
-	float az_g = az / g;
-	// float gx_rad = gx * PI / 180.0f * 2 * PI;	// Warning: 这里是一个很奇怪的问题
-	// float gy_rad = gy * PI / 180.0f * 2 * PI;	// 输入的角速度单位是°/s,然后先(* PI / 180)转换为rad/s以方便后续计算
-	// float gz_rad = gz * PI / 180.0f * 2 * PI;	// 但是实际发现yaw轴转动90°角度只变换到大概14°左右,恰巧约为(2 * PI)倍数关系,说明以前的单位是转/s?或者是四元数计算公式有问题
-	float gx_rad = gx * PI / 180.0f;	// Warning: 这里是一个很奇怪的问题
-	float gy_rad = gy * PI / 180.0f;	// 但是在另一个项目里面测试的时候发现不需要这个,加上这个反而会导致角速度增益变大变错
-	float gz_rad = gz * PI / 180.0f;	// 建议是都可以试一下,哪个行就用哪个
-
-	float s0, s1, s2, s3;
-	float qDot1, qDot2, qDot3, qDot4;
-	float _2q0, _2q1, _2q2, _2q3, _4q0, _4q1, _4q2 ,_8q1, _8q2, q0q0, q1q1, q2q2, q3q3;
-
-	// Rate of change of quaternion from gy_radroscope
-	qDot1 = 0.5f * (-_q1 * gx_rad - _q2 * gy_rad - _q3 * gz_rad);
-	qDot2 = 0.5f * (_q0 * gx_rad + _q2 * gz_rad - _q3 * gy_rad);
-	qDot3 = 0.5f * (_q0 * gy_rad - _q1 * gz_rad + _q3 * gx_rad);
-	qDot4 = 0.5f * (_q0 * gz_rad + _q1 * gy_rad - _q2 * gx_rad);
-
-	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if(!((ax_g == 0.0f) && (ay_g == 0.0f) && (az_g == 0.0f))) {
-如果 （！（（ax_g == 0.0f） & （ay_g == 0.0f） & （az_g == 0.0f））） {  
-
-		// Normalise accelerometer measurement
-		Norm_Data(&ax_g,&ay_g,&az_g);
-
-		// Auxiliary variables to avoid repeated arithmetic
-		_2q0 = 2.0f * _q0;
-		_2q1 = 2.0f * _q1;
-		_2q2 = 2.0f * _q2;
-		_2q3 = 2.0f * _q3;
-		_4q0 = 4.0f * _q0;
-		_4q1 = 4.0f * _q1;
-		_4q2 = 4.0f * _q2;
-		_8q1 = 8.0f * _q1;
-		_8q2 = 8.0f * _q2;
-		q0q0 = _q0 * _q0;
-		q1q1 = _q1 * _q1;
-		q2q2 = _q2 * _q2;
-		q3q3 = _q3 * _q3;
-
-		// Gradient decent algorithm corrective step
-        s0 = _4q0 * q2q2 + _2q2 * ax_g + _4q0 * q1q1 - _2q1 * ay_g;
-        s1 = _4q1 * q3q3 - _2q3 * ax_g + 4.0f * q0q0 * _q1 - _2q0 * ay_g - _4q1 + _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * az_g;
-        s2 = 4.0f * q0q0 * _q2 + _2q0 * ax_g + _4q2 * q3q3 - _2q3 * ay_g - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * az_g;
-        s3 = 4.0f * q1q1 * _q3 - _2q1 * ax_g + 4.0f * q2q2 * _q3 - _2q2 * ay_g;
-		Norm_Data_Q(&s0,&s1,&s2,&s3);
-
-		// Apply feedback step
-		qDot1 -= _betaDef * s0;
-		qDot2 -= _betaDef * s1;
-		qDot3 -= _betaDef * s2;
-		qDot4 -= _betaDef * s3;
-	}
-
-	// Integrate rate of change of quaternion to yield quaternion
-	_q0 += qDot1 * dt;
-	_q1 += qDot2 * dt;
-	_q2 += qDot3 * dt;
-	_q3 += qDot4 * dt;
-
-	// Normalise quaternion
-	Norm_Data_Q(&_q0,&_q1,&_q2,&_q3);
+    _get_accel_IMU(ax, ay, az, pitch, roll, yaw);
+    _get_speed_IMU();
 }
 
-/*
- * name:Madgwick方法
- * func:有磁力计下的Madgwick方法,用于计算姿态解算
- * in:acc[3]:角速度的x,y,z轴	gyro[3]:角速度的x,y,z轴	mag[3]:磁力计的x,y,z轴
- * out:void
- * PS:未使用该方法的yaw轴
- *
- * */
-void EULER::MadgwickAHRSupdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
+void MOVEMENT::update_IMU(float ax, float ay, float az, float q0, float q1, float q2, float q3)
 {
-	// Use IMU algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
-	if((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
-		MadgwickAHRSupdateIMU(ax, ay, az, gx, gy, gz);
-		return;
-	}
-
-	float dt = (getTick() - _last_time) / 1000.0f;
-	_last_time = getTick();
-
-	float ax_g = ax / g;
-	float ay_g = ay / g;
-	float az_g = az / g;
-	// float gx_rad = gx * PI / 180.0f * 2 * PI;	// Warning: 这里是一个很奇怪的问题
-	// float gy_rad = gy * PI / 180.0f * 2 * PI;	// 输入的角速度单位是°/s,然后先(* PI / 180)转换为rad/s以方便后续计算
-	// float gz_rad = gz * PI / 180.0f * 2 * PI;	// 但是实际发现yaw轴转动90°角度只变换到大概14°左右,恰巧约为(2 * PI)倍数关系,说明以前的单位是转/s?或者是四元数计算公式有问题
-	float gx_rad = gx * PI / 180.0f;	// Warning: 这里是一个很奇怪的问题
-	float gy_rad = gy * PI / 180.0f;	// 但是在另一个项目里面测试的时候发现不需要这个,加上这个反而会导致角速度增益变大变错
-	float gz_rad = gz * PI / 180.0f;	// 建议是都可以试一下,哪个行就用哪个
-	
-    float s0, s1, s2, s3;
-	float qDot1, qDot2, qDot3, qDot4;
-    float hx, hy;
-	float _2q0mx, _2q0my, _2q0mz, _2q1mx, _2bx, _2bz, _4bx, _4bz, _2q0, _2q1, _2q2, _2q3, _2q0q2, _2q2q3, q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;
-
-	// Rate of change of quaternion from gy_radroscope
-	qDot1 = 0.5f * (-_q1 * gx_rad - _q2 * gy_rad - _q3 * gz_rad);
-	qDot2 = 0.5f * (_q0 * gx_rad + _q2 * gz_rad - _q3 * gy_rad);
-	qDot3 = 0.5f * (_q0 * gy_rad - _q1 * gz_rad + _q3 * gx_rad);
-	qDot4 = 0.5f * (_q0 * gz_rad + _q1 * gy_rad - _q2 * gx_rad);
-
-	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if(!((ax_g == 0.0f) && (ay_g == 0.0f) && (az_g == 0.0f))) {
-
-		// Normalise accelerometer measurement
-		Norm_Data(&ax_g,&ay_g,&az_g);
-
-		// Normalise magnetometer measurement
-		Norm_Data(&mx,&my,&mz);
-
-		// Auxiliary variables to avoid repeated arithmetic
-		_2q0mx = 2.0f * _q0 * mx;
-		_2q0my = 2.0f * _q0 * my;
-		_2q0mz = 2.0f * _q0 * mz;
-		_2q1mx = 2.0f * _q1 * mx;
-		_2q0 = 2.0f * _q0;
-		_2q1 = 2.0f * _q1;
-		_2q2 = 2.0f * _q2;
-		_2q3 = 2.0f * _q3;
-		_2q0q2 = 2.0f * _q0 * _q2;
-		_2q2q3 = 2.0f * _q2 * _q3;
-		q0q0 = _q0 * _q0;
-		q0q1 = _q0 * _q1;
-		q0q2 = _q0 * _q2;
-		q0q3 = _q0 * _q3;
-		q1q1 = _q1 * _q1;
-		q1q2 = _q1 * _q2;
-		q1q3 = _q1 * _q3;
-		q2q2 = _q2 * _q2;
-		q2q3 = _q2 * _q3;
-		q3q3 = _q3 * _q3;
-
-		// Reference direction of Earth's magnetic field
-		hx = mx * q0q0 - _2q0my * _q3 + _2q0mz * _q2 + mx * q1q1 + _2q1 * my * _q2 + _2q1 * mz * _q3 - mx * q2q2 - mx * q3q3;
-		hy = _2q0mx * _q3 + my * q0q0 - _2q0mz * _q1 + _2q1mx * _q2 - my * q1q1 + my * q2q2 + _2q2 * mz * _q3 - my * q3q3;
-		_2bx = sqrt(hx * hx + hy * hy);
-		_2bz = -_2q0mx * _q2 + _2q0my * _q1 + mz * q0q0 + _2q1mx * _q3 - mz * q1q1 + _2q2 * my * _q3 - mz * q2q2 + mz * q3q3;
-		_4bx = 2.0f * _2bx;
-		_4bz = 2.0f * _2bz;
-
-		// Gradient decent algorithm corrective step
-		s0 = -_2q2 * (2.0f * q1q3 - _2q0q2 - ax_g) + _2q1 * (2.0f * q0q1 + _2q2q3 - ay_g) - _2bz * _q2 * (_2bx * (0.5f - q2q2 - q3q3) + _2bz * (q1q3 - q0q2) - mx) + (-_2bx * _q3 + _2bz * _q1) * (_2bx * (q1q2 - q0q3) + _2bz * (q0q1 + q2q3) - my) + _2bx * _q2 * (_2bx * (q0q2 + q1q3) + _2bz * (0.5f - q1q1 - q2q2) - mz);
-		s1 = _2q3 * (2.0f * q1q3 - _2q0q2 - ax_g) + _2q0 * (2.0f * q0q1 + _2q2q3 - ay_g) - 4.0f * _q1 * (1 - 2.0f * q1q1 - 2.0f * q2q2 - az_g) + _2bz * _q3 * (_2bx * (0.5f - q2q2 - q3q3) + _2bz * (q1q3 - q0q2) - mx) + (_2bx * _q2 + _2bz * _q0) * (_2bx * (q1q2 - q0q3) + _2bz * (q0q1 + q2q3) - my) + (_2bx * _q3 - _4bz * _q1) * (_2bx * (q0q2 + q1q3) + _2bz * (0.5f - q1q1 - q2q2) - mz);
-		s2 = -_2q0 * (2.0f * q1q3 - _2q0q2 - ax_g) + _2q3 * (2.0f * q0q1 + _2q2q3 - ay_g) - 4.0f * _q2 * (1 - 2.0f * q1q1 - 2.0f * q2q2 - az_g) + (-_4bx * _q2 - _2bz * _q0) * (_2bx * (0.5f - q2q2 - q3q3) + _2bz * (q1q3 - q0q2) - mx) + (_2bx * _q1 + _2bz * _q3) * (_2bx * (q1q2 - q0q3) + _2bz * (q0q1 + q2q3) - my) + (_2bx * _q0 - _4bz * _q2) * (_2bx * (q0q2 + q1q3) + _2bz * (0.5f - q1q1 - q2q2) - mz);
-		s3 = _2q1 * (2.0f * q1q3 - _2q0q2 - ax_g) + _2q2 * (2.0f * q0q1 + _2q2q3 - ay_g) + (-_4bx * _q3 + _2bz * _q1) * (_2bx * (0.5f - q2q2 - q3q3) + _2bz * (q1q3 - q0q2) - mx) + (-_2bx * _q0 + _2bz * _q2) * (_2bx * (q1q2 - q0q3) + _2bz * (q0q1 + q2q3) - my) + _2bx * _q1 * (_2bx * (q0q2 + q1q3) + _2bz * (0.5f - q1q1 - q2q2) - mz);
-		Norm_Data_Q(&s0,&s1,&s2,&s3);
-
-		// Apply feedback step
-		qDot1 -= _betaDef * s0;
-		qDot2 -= _betaDef * s1;
-		qDot3 -= _betaDef * s2;
-		qDot4 -= _betaDef * s3;
-	}
-
-	// Integrate rate of change of quaternion to yield quaternion
-	_q0 += qDot1 * dt;
-	_q1 += qDot2 * dt;
-	_q2 += qDot3 * dt;
-	_q3 += qDot4 * dt;
-
-	// Normalise quaternion
-	Norm_Data_Q(&_q0,&_q1,&_q2,&_q3);
+    _get_accel_IMU(ax, ay, az, q0, q1, q2, q3);
+    _get_speed_IMU();
 }
+
+
 
