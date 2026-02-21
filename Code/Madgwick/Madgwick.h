@@ -7,14 +7,21 @@
 #define PI 3.14159265
 #define g  9.80655
 
+#define ACCEL_BETA_THRESHOLD 0.5f       // 加速度计数据与重力加速度的差值阈值，单位为m/s^2。当加速度计数据与重力加速度的差值小于该阈值时，认为加速度计数据可靠，可以使用较高的beta值进行姿态估计；否则认为加速度计数据不可靠，使用较低的beta值以减少对姿态估计的影响。
+
+#define MADGWICK_BETA_DEF 0.98f         // Madgwick算法的默认beta值，适用于加速度计数据可靠的情况。较高的beta值会使算法更快地响应加速度计数据，但可能会引入更多的噪声。
+#define MADGWICK_BETA_FAST 0.001f       // Madgwick算法的快速响应beta值，适用于加速度计数据不可靠的情况。较低的beta值会使算法更慢地响应加速度计数据，但可以减少噪声对姿态估计的影响。
+
 class EULER
 {
     public:
         EULER(void);
-        EULER(float betaDef);
 
         void MadgwickAHRSupdateIMU(float ax, float ay, float az, float gx, float gy, float gz);
         void MadgwickAHRSupdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
+
+        // void ESKFupdataIMU(float ax, float ay, float az, float gx, float gy, float gz);
+        // void ESKFupdata(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz);
 
         inline float get_q0() { return _q0; }
         inline float get_q1() { return _q1; }
