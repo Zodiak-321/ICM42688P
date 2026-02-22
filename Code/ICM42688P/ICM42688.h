@@ -1,8 +1,19 @@
-#ifndef __ICM42688_H__
-#define __ICM42688_H__
+#pragma once
 
 #include "main.h"
-#include "ICM42688_reg.h"
+#include "ICM42688p_reg.h"
+
+
+
+#define ICM_USE_FREERTOS true // Set to 1 to enable FreeRTOS delays, 0 for HAL_Delay (blocking)
+
+
+
+#if ICM_USE_FREERTOS == 1
+    #include "FreeRTOS.h"
+    #include "task.h"
+    #define ICM_TaskDelay(ms) vTaskDelay(pdMS_TO_TICKS(ms))
+#endif
 
 // #define ENABLE_DEBUG
 
@@ -19,7 +30,7 @@
 #define PI 3.14159265
 #define g  9.80655
 
-class ICM42688
+class ICM42688P
 {
     public:
         enum class ICM42688_StatusTypeDef : uint8_t
@@ -45,13 +56,13 @@ class ICM42688
         };
 
         #ifdef HAL_I2C_MODULE_ENABLED
-        ICM42688(I2C_HandleTypeDef* hi2c,
+        ICM42688P(I2C_HandleTypeDef* hi2c,
              uint8_t address = ICM42688_I2C_ADDR_LOW,
              ICM42688_MountingOrientation mounting = ICM42688_MountingOrientation::MOUNT_Z_DOWN);
         #endif
 
         #ifdef HAL_SPI_MODULE_ENABLED
-        ICM42688(SPI_HandleTypeDef* hspi,
+        ICM42688P(SPI_HandleTypeDef* hspi,
              GPIO_TypeDef* cs_port,
              uint16_t cs_pin,
              ICM42688_MountingOrientation mounting = ICM42688_MountingOrientation::MOUNT_Z_DOWN);
@@ -274,9 +285,9 @@ class ICM42688
                     TMST_RESOL_16us = 1,
                 };
 
-                General(ICM42688* parent);
+                General(ICM42688P* parent);
 
-                ICM42688::ICM42688_StatusTypeDef begin(void);
+                ICM42688P::ICM42688_StatusTypeDef begin(void);
 
                 /**
                  * @brief 开启加速度计
@@ -455,41 +466,41 @@ class ICM42688
                  * @brief 获取加速度x分量
                  * @return 加速度x分量
                  */
-                float get_ax(void);
+                float getAccelX(void);
                 /**
                  * @brief 获取加速度y分量
                  * @return 加速度y分量
                  */
-                float get_ay(void);
+                float getAccelY(void);
                 /**
                  * @brief 获取加速度z分量
                  * @return 加速度z分量
                  */
-                float get_az(void);
+                float getAccelZ(void);
                 /**
                  * @brief 获取角速度x分量
                  * @return 角速度计x分量
                  */
-                float get_gx(void);
+                float getGyroX(void);
                 /**
                  * @brief 获取角速度y分量
                  * @return 角速度计y分量
                  */
-                float get_gy(void);
+                float getGyroY(void);
                 /**
                  * @brief 获取角速度z分量
                  * @return 角速度计z分量
                  */
-                float get_gz(void);
+                float getGyroZ(void);
                 /**
                  * @brief 获取温度
                  * @return 温度
                  */
-                float get_temp(void);
+                float getTemperature(void);
 
-                float get_tmst_fsync(void);
+                float getTimeStampFsync(void);
 
-                float get_tmst(void);
+                float getTimeStamp(void);
                 
             private:
 
@@ -756,7 +767,7 @@ class ICM42688
                  */         
                 StatusTypeDef set_gyro_filter(GYRO_UIF_LN UIF_bw, GYRO_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable,ICM42688_SWITCH NF_enable, uint16_t NF_certenfreq_x, uint16_t NF_certenfreq_y, uint16_t NF_certenfreq_z, NF_BW NF_bw, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT);
 
-                ICM42688* _parent;
+                ICM42688P* _parent;
 
                 uint8_t _acc_fs;
                 uint8_t _gyro_fs;
@@ -820,7 +831,7 @@ class ICM42688
                     FIFO_MODE_WM_GT_TH_MORETHAN = 1,
                 };
 
-                FIFO(ICM42688* parent);
+                FIFO(ICM42688P* parent);
 
                 StatusTypeDef begin(void);
 
@@ -839,7 +850,7 @@ class ICM42688
                 StatusTypeDef writeReg(uint8_t reg, uint8_t* pdata, uint16_t len);
                 StatusTypeDef readReg(uint8_t reg, uint8_t* pdata, uint16_t len);
 
-                ICM42688* _parent;
+                ICM42688P* _parent;
         };
         FIFO fifo;
 
@@ -918,9 +929,9 @@ class ICM42688
 
                 typedef void (*IntCallback)(void* context);
 
-                INT(ICM42688* parent);
+                INT(ICM42688P* parent);
 
-                ICM42688::ICM42688_StatusTypeDef begin(void);
+                ICM42688P::ICM42688_StatusTypeDef begin(void);
 
                 StatusTypeDef set_int_latchClear_mode(CLEAR_MODE DRDY_clear_mode = CLEAR_MODE::CLEAR_ON_STATUS_BIT_READ,
                                                      CLEAR_MODE FIFO_THS_clear_mode = CLEAR_MODE::CLEAR_ON_STATUS_BIT_READ,
@@ -935,6 +946,9 @@ class ICM42688
                                               LEVEL level = LEVEL::LEVEL_ACTIVE_HIGH,
                                               DRIVE drive = DRIVE::DRIVE_PUSH_PULL,
                                               MODE mode = MODE::LATCHED);
+
+                StatusTypeDef set_int_source(INT_NUM int_num, IntEvent event, bool enable);
+                StatusTypeDef get_clr_int_state(void);
 
                 StatusTypeDef register_event(IntEvent event, INT_NUM int_num, IntCallback callback, void* context = nullptr, EVENT_PRIORITY priority = EVENT_PRIORITY::PRIORITY_NORMAL);
                 StatusTypeDef unregister_event(IntEvent event, INT_NUM int_num);
@@ -1019,9 +1033,6 @@ class ICM42688
                 StatusTypeDef writeReg(uint8_t reg, uint8_t* pdata, uint16_t len);
                 StatusTypeDef readReg(uint8_t reg, uint8_t* pdata, uint16_t len);   
 
-                StatusTypeDef set_int_source(INT_NUM int_num, IntEvent event, bool enable);
-                StatusTypeDef get_int_state(void);
-
                 bool _UI_FSYNC_INT_state;
                 bool _PLL_RDY_INT_state;
                 bool _RESET_DONE_INT_state;
@@ -1041,7 +1052,7 @@ class ICM42688
                 bool _SLEEP_DET_INT_state;
                 bool _TAP_DET_INT_state;
                 
-                ICM42688* _parent;
+                ICM42688P* _parent;
         };
         INT Int;
 
@@ -1209,9 +1220,6 @@ class ICM42688
         #endif
 };
 
-#endif
-
-#if 1
 /**
  * @brief UI FSYNC中断默认回调
  * @param context 用户上下文
@@ -1302,5 +1310,3 @@ __weak void SLEEP_DET_callback(void* context);
  * @param context 用户上下文
  */
 __weak void TAP_DET_callback(void* context);
-
-#endif

@@ -1,11 +1,11 @@
-#include "ICM42688.h"
+#include "icm42688p.h"
 #include <cstdio>
 #include <cmath>
 
 //###########################################################################################################
 
 #ifdef HAL_I2C_MODULE_ENABLED
-ICM42688::ICM42688(I2C_HandleTypeDef* hi2c,
+ICM42688P::ICM42688P(I2C_HandleTypeDef* hi2c,
                   uint8_t address,
                   ICM42688_MountingOrientation mounting)
     : general(this), fifo(this), Int(this), _mounting(mounting), _hi2c(hi2c), _address(address)
@@ -18,7 +18,7 @@ ICM42688::ICM42688(I2C_HandleTypeDef* hi2c,
 #endif
 
 #ifdef HAL_SPI_MODULE_ENABLED
-ICM42688::ICM42688(SPI_HandleTypeDef* hspi,
+ICM42688P::ICM42688P(SPI_HandleTypeDef* hspi,
                   GPIO_TypeDef* cs_port,
                   uint16_t cs_pin,
                   ICM42688_MountingOrientation mounting)
@@ -29,22 +29,22 @@ ICM42688::ICM42688(SPI_HandleTypeDef* hspi,
 #endif
 
 #ifdef HAL_SPI_MODULE_ENABLED
-ICM42688::ICM42688_StatusTypeDef ICM42688::csSet()
+ICM42688P::ICM42688_StatusTypeDef ICM42688P::csSet()
 {
     HAL_GPIO_WritePin(_cs_port, _cs_pin, GPIO_PIN_SET);
     return ICM42688_StatusTypeDef::OK;
 }
 
-ICM42688::ICM42688_StatusTypeDef ICM42688::csReset()
+ICM42688P::ICM42688_StatusTypeDef ICM42688P::csReset()
 {
     HAL_GPIO_WritePin(_cs_port, _cs_pin, GPIO_PIN_RESET);
     return ICM42688_StatusTypeDef::OK;
 }
 #endif
 
-ICM42688::ICM42688_StatusTypeDef ICM42688::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::ICM42688_StatusTypeDef ICM42688P::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688_StatusTypeDef::OK;
 
     #ifdef HAL_I2C_MODULE_ENABLED
     if(_hi2c != nullptr)
@@ -89,9 +89,9 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::readReg(uint8_t reg, uint8_t* pdata, 
     return ICM42688_StatusTypeDef::ERROR;
 }
 
-ICM42688::ICM42688_StatusTypeDef ICM42688::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::ICM42688_StatusTypeDef ICM42688P::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688_StatusTypeDef::OK;
 
     #ifdef HAL_I2C_MODULE_ENABLED
     if(_hi2c != nullptr)
@@ -138,16 +138,24 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::writeReg(uint8_t reg, uint8_t* pdata,
     return ICM42688_StatusTypeDef::ERROR;
 }
 
-void ICM42688::icm_delay(uint32_t ms)
+void ICM42688P::icm_delay(uint32_t ms)
 {
-    HAL_Delay(ms);
+    #if ICM_USE_FREERTOS == 1
+        if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+            ICM_TaskDelay(ms);
+        } else {
+            HAL_Delay(ms);
+        }
+    #else
+        HAL_Delay(ms);
+    #endif
 }
 
 //-----------------------------------------------------------------------------------------------------------
 
-ICM42688::ICM42688_StatusTypeDef ICM42688::begin(void)
+ICM42688P::ICM42688_StatusTypeDef ICM42688P::begin(void)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688_StatusTypeDef::OK;
 
     if(_is_i2c == false && _is_spi == false)
     {
@@ -169,34 +177,34 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::begin(void)
 
 //###########################################################################################################
 
-ICM42688::General::General(ICM42688* parent)
+ICM42688P::General::General(ICM42688P* parent)
     : _parent(parent)
 {
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::General::StatusTypeDef ICM42688P::General::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688::ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688P::ICM42688_StatusTypeDef::OK;
 
     res = _parent->readReg(reg, pdata, len);
-    if(res != ICM42688::ICM42688_StatusTypeDef::OK)
-        return ICM42688::General::StatusTypeDef::ERROR;
+    if(res != ICM42688P::ICM42688_StatusTypeDef::OK)
+        return ICM42688P::General::StatusTypeDef::ERROR;
     else
-        return ICM42688::General::StatusTypeDef::OK;
+        return ICM42688P::General::StatusTypeDef::OK;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::General::StatusTypeDef ICM42688P::General::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688::ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688P::ICM42688_StatusTypeDef::OK;
 
     res = _parent->writeReg(reg, pdata, len);
-    if(res != ICM42688::ICM42688_StatusTypeDef::OK)
-        return ICM42688::General::StatusTypeDef::ERROR;
+    if(res != ICM42688P::ICM42688_StatusTypeDef::OK)
+        return ICM42688P::General::StatusTypeDef::ERROR;
     else
-        return ICM42688::General::StatusTypeDef::OK;
+        return ICM42688P::General::StatusTypeDef::OK;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::find_AFF(ACCEL_ODR odr, uint8_t* AAF_DELT, uint16_t* AAF_DELTSQR, uint8_t* AAF_BITSHIFT)
+ICM42688P::General::StatusTypeDef ICM42688P::General::find_AFF(ACCEL_ODR odr, uint8_t* AAF_DELT, uint16_t* AAF_DELTSQR, uint8_t* AAF_BITSHIFT)
 {
     uint16_t half_odr = 0;
 
@@ -236,7 +244,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::find_AFF(ACCEL_ODR odr, uint
         #ifdef ENABLE_DEBUG
             printf("%sCould not find the AAF parameter.\n", WARNING_TYPE);
         #endif
-        return ICM42688::General::StatusTypeDef::ERROR; 
+        return ICM42688P::General::StatusTypeDef::ERROR; 
     }
     else if(half_odr >= 4000)
     {
@@ -275,10 +283,10 @@ ICM42688::General::StatusTypeDef ICM42688::General::find_AFF(ACCEL_ODR odr, uint
         *AAF_BITSHIFT = 15;
     }
     
-    return ICM42688::General::StatusTypeDef::OK;
+    return ICM42688P::General::StatusTypeDef::OK;
 } 
 
-ICM42688::General::StatusTypeDef ICM42688::General::find_AFF(GYRO_ODR odr, uint8_t* AAF_DELT, uint16_t* AAF_DELTSQR, uint8_t* AAF_BITSHIFT)
+ICM42688P::General::StatusTypeDef ICM42688P::General::find_AFF(GYRO_ODR odr, uint8_t* AAF_DELT, uint16_t* AAF_DELTSQR, uint8_t* AAF_BITSHIFT)
 {
     *AAF_DELT = 10;          // 示例值
     *AAF_DELTSQR = 100;     // 示例值
@@ -322,7 +330,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::find_AFF(GYRO_ODR odr, uint8
         #ifdef ENABLE_DEBUG
             printf("%sCould not find the AAF parameter.\n", WARNING_TYPE);
         #endif
-        return ICM42688::General::StatusTypeDef::ERROR; 
+        return ICM42688P::General::StatusTypeDef::ERROR; 
     }
     else if(half_odr >= 4000)
     {
@@ -361,10 +369,10 @@ ICM42688::General::StatusTypeDef ICM42688::General::find_AFF(GYRO_ODR odr, uint8
         *AAF_BITSHIFT = 15;
     }
     
-    return ICM42688::General::StatusTypeDef::OK;
+    return ICM42688P::General::StatusTypeDef::OK;
 } 
 
-ICM42688::General::StatusTypeDef ICM42688::General::find_NF(uint16_t fdesired, uint8_t* NF_COSWZ_SEL, uint16_t* NF_COSWZ)
+ICM42688P::General::StatusTypeDef ICM42688P::General::find_NF(uint16_t fdesired, uint8_t* NF_COSWZ_SEL, uint16_t* NF_COSWZ)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
@@ -400,7 +408,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::find_NF(uint16_t fdesired, u
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mode, ACCEL_UIF_LN UIF_bw_LN, ACCEL_UIF_LP UIF_bw_LP, ACCEL_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
+ICM42688P::General::StatusTypeDef ICM42688P::General::set_acc_filter(ACCEL_MODE mode, ACCEL_UIF_LN UIF_bw_LN, ACCEL_UIF_LP UIF_bw_LP, ACCEL_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -552,7 +560,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_filter(ACCEL_MODE mo
     return StatusTypeDef::OK;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN UIF_bw, GYRO_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable,ICM42688_SWITCH NF_enable, uint16_t NF_certenfreq_x, uint16_t NF_certenfreq_y, uint16_t NF_certenfreq_z, NF_BW NF_bw, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
+ICM42688P::General::StatusTypeDef ICM42688P::General::set_gyro_filter(GYRO_UIF_LN UIF_bw, GYRO_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable,ICM42688_SWITCH NF_enable, uint16_t NF_certenfreq_x, uint16_t NF_certenfreq_y, uint16_t NF_certenfreq_z, NF_BW NF_bw, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -800,7 +808,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_gyro_filter(GYRO_UIF_LN 
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::set_acc_gyro_offset(uint16_t samples)
+ICM42688P::General::StatusTypeDef ICM42688P::General::set_acc_gyro_offset(uint16_t samples)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -865,23 +873,6 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_gyro_offset(uint16_t
 
     _parent->icm_delay(100);
 
-    #ifdef ENABLE_DEBUG
-        printf("%sstarting set accel and gyro offset.\n", PROCESS_TYPE);
-    #endif
-
-    #ifdef ENABLE_DEBUG
-        printf("now data are:\n");
-        for(int i = 0; i < 5; i++)
-        {
-            read_data();
-            printf("ax = %f ay = %f az = %f gx = %f gy = %f gz = %f\n", get_ax(), get_ay(), get_az(), get_gx(), get_gy(), get_gz());
-        }    
-    #endif
-
-    #ifdef ENABLE_DEBUG
-        printf("Sampling...Please keep IMU stable.\n");
-    #endif
-
     for(int i = 0; i < samples; i++)
     {
         read_data();
@@ -890,52 +881,52 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_gyro_offset(uint16_t
         {
             case 0:
             {
-                ax_off += get_ax();
-                ay_off += get_ay();
-                az_off += (get_az() - g);
+                ax_off += getAccelX();
+                ay_off += getAccelY();
+                az_off += (getAccelZ() - g);
                 break;
             }
             case 1:
             {
-                ax_off += get_ax();
-                ay_off += get_ay();
-                az_off += (get_az() + g);
+                ax_off += getAccelX();
+                ay_off += getAccelY();
+                az_off += (getAccelZ() + g);
                 break;
             }
             case 2:
             {
-                ax_off += (get_ax() - g);
-                ay_off += get_ay();
-                az_off += get_az();
+                ax_off += (getAccelX() - g);
+                ay_off += getAccelY();
+                az_off += getAccelZ();
                 break;
             }
             case 3:
             {
-                ax_off += (get_ax() + g);
-                ay_off += get_ay();
-                az_off += get_az();
+                ax_off += (getAccelX() + g);
+                ay_off += getAccelY();
+                az_off += getAccelZ();
                 break;
             }
             case 4:
             {
-                ax_off += get_ax();
-                ay_off += (get_ay() - g);
-                az_off += get_az();
+                ax_off += getAccelX();
+                ay_off += (getAccelY() - g);
+                az_off += getAccelZ();
                 break;
             }
             case 5:
             {
-                ax_off += get_ax();
-                ay_off += (get_ay() + g);
-                az_off += get_az();
+                ax_off += getAccelX();
+                ay_off += (getAccelY() + g);
+                az_off += getAccelZ();
                 break;
             }
             default:
                 return StatusTypeDef::ERROR; 
         }
-        gx_off += get_gx();
-        gy_off += get_gy();
-        gz_off += get_gz();
+        gx_off += getGyroX();
+        gy_off += getGyroY();
+        gz_off += getGyroZ();
 
 
         #ifdef ENABLE_DEBUG
@@ -1010,7 +1001,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_gyro_offset(uint16_t
         for(int i = 0; i < 5; i++)
         {
             read_data();
-            printf("ax = %f ay = %f az = %f gx = %f gy = %f gz = %f\n", get_ax(), get_ay(), get_az(), get_gx(), get_gy(), get_gz());
+            printf("ax = %f ay = %f az = %f gx = %f gy = %f gz = %f\n", getAccelX(), getAccelY(), getAccelZ(), getGyroX(), getGyroY(), getGyroZ());
         }    
     #endif
 
@@ -1033,52 +1024,52 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_gyro_offset(uint16_t
         {
             case 0:
             {
-                ax_off += get_ax();
-                ay_off += get_ay();
-                az_off += (get_az() - g);
+                ax_off += getAccelX();
+                ay_off += getAccelY();
+                az_off += (getAccelZ() - g);
                 break;
             }
             case 1:
             {
-                ax_off += get_ax();
-                ay_off += get_ay();
-                az_off += (get_az() + g);
+                ax_off += getAccelX();
+                ay_off += getAccelY();
+                az_off += (getAccelZ() + g);
                 break;
             }
             case 2:
             {
-                ax_off += (get_ax() - g);
-                ay_off += get_ay();
-                az_off += get_az();
+                ax_off += (getAccelX() - g);
+                ay_off += getAccelY();
+                az_off += getAccelZ();
                 break;
             }
             case 3:
             {
-                ax_off += (get_ax() + g);
-                ay_off += get_ay();
-                az_off += get_az();
+                ax_off += (getAccelX() + g);
+                ay_off += getAccelY();
+                az_off += getAccelZ();
                 break;
             }
             case 4:
             {
-                ax_off += get_ax();
-                ay_off += (get_ay() - g);
-                az_off += get_az();
+                ax_off += getAccelX();
+                ay_off += (getAccelY() - g);
+                az_off += getAccelZ();
                 break;
             }
             case 5:
             {
-                ax_off += get_ax();
-                ay_off += (get_ay() + g);
-                az_off += get_az();
+                ax_off += getAccelX();
+                ay_off += (getAccelY() + g);
+                az_off += getAccelZ();
                 break;
             }
             default:
                 return StatusTypeDef::ERROR; 
         }
-        gx_off += get_gx();
-        gy_off += get_gy();
-        gz_off += get_gz();
+        gx_off += getGyroX();
+        gy_off += getGyroY();
+        gz_off += getGyroZ();
 
         #ifdef ENABLE_DEBUG
             if(i % 100 == 1)
@@ -1112,7 +1103,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_gyro_offset(uint16_t
         for(int i = 0; i < 5; i++)
         {
             read_data();
-            printf("ax = %f ay = %f az = %f gx = %f gy = %f gz = %f\n", get_ax(), get_ay(), get_az(), get_gx(), get_gy(), get_gz());
+            printf("ax = %f ay = %f az = %f gx = %f gy = %f gz = %f\n", getAccelX(), getAccelY(), getAccelZ(), getGyroX(), getGyroY(), getGyroZ());
         }    
     #endif
 
@@ -1123,7 +1114,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::set_acc_gyro_offset(uint16_t
 
 //-----------------------------------------------------------------------------------------------------------
 
-ICM42688::ICM42688_StatusTypeDef ICM42688::General::begin(void)
+ICM42688P::ICM42688_StatusTypeDef ICM42688P::General::begin(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1138,25 +1129,25 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::General::begin(void)
             #ifdef ENABLE_DEBUG
                 printf("%sWrong I2C Address.\n", ERROR_TYPE);
             #endif
-            return ICM42688::ICM42688_StatusTypeDef::ERROR;
+            return ICM42688P::ICM42688_StatusTypeDef::ERROR;
         }
     #endif
 
     reg_data = 0x01;
     res = writeReg(REG_DEVICE_CONFIG, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     _parent->icm_delay(20);
 
     uint8_t who_am_i = 0;
     res = readReg(REG_WHO_AM_I, &who_am_i, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
     if(who_am_i != ICM42688_WHO_AM_I)
     {
         #ifdef ENABLE_DEBUG
             printf("%sWrong WHO_AM_I test.\n", ERROR_TYPE);
         #endif
-        return ICM42688::ICM42688_StatusTypeDef::ERROR;
+        return ICM42688P::ICM42688_StatusTypeDef::ERROR;
     }
 
     if(_parent->_is_i2c == true)
@@ -1166,7 +1157,7 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::General::begin(void)
         #endif
         uint8_t reg_data = 0x32;
         res = readReg(REG_INTF_CONFIG0, &reg_data, 1);
-        if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+        if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
     }
     else if(_parent->_is_spi == true)
     {
@@ -1175,43 +1166,43 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::General::begin(void)
         #endif
         uint8_t reg_data = 0x33;
         res = readReg(REG_INTF_CONFIG0, &reg_data, 1);
-        if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+        if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
     }
     else 
-        return ICM42688::ICM42688_StatusTypeDef::ERROR;
+        return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     reg_data = 0x91;
     res = writeReg(REG_INTF_CONFIG1, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     reg_data = 0x01;
     res = writeReg(REG_REG_BANK_SEL, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     reg_data = 0x02;
     res = writeReg(REG_INTF_CONFIG4, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     reg_data = 0x00;
     res = writeReg(REG_INTF_CONFIG5, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     reg_data = 0x5F;
     res = writeReg(REG_INTF_CONFIG6, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     reg_data = 0x00;
     res = writeReg(REG_REG_BANK_SEL, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     #ifdef ENABLE_DEBUG
         printf("%sfinish initial the General.\n", SUCCESS_TYPE);
     #endif
 
-    return ICM42688::ICM42688_StatusTypeDef::OK;
+    return ICM42688P::ICM42688_StatusTypeDef::OK;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, ACCEL_FS fs, ACCEL_MODE mode, ACCEL_UIF_LN UIF_bw_LN, ACCEL_UIF_LP UIF_bw_LP, ACCEL_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_acc(ACCEL_ODR odr, ACCEL_FS fs, ACCEL_MODE mode, ACCEL_UIF_LN UIF_bw_LN, ACCEL_UIF_LP UIF_bw_LP, ACCEL_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1268,7 +1259,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, AC
     return StatusTypeDef::OK;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, ACCEL_FS fs, ACCEL_MODE mode, ACCEL_UIF_LN UIF_bw_LN, ACCEL_UIF_LP UIF_bw_LP, ACCEL_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH AAF_enable)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_acc(ACCEL_ODR odr, ACCEL_FS fs, ACCEL_MODE mode, ACCEL_UIF_LN UIF_bw_LN, ACCEL_UIF_LP UIF_bw_LP, ACCEL_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH AAF_enable)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1342,7 +1333,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, AC
     return StatusTypeDef::OK;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, ACCEL_FS fs, FILTER_LEVEL filter_level)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_acc(ACCEL_ODR odr, ACCEL_FS fs, FILTER_LEVEL filter_level)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1470,7 +1461,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_acc(ACCEL_ODR odr, AC
     return StatusTypeDef::OK;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::disable_acc(void)
+ICM42688P::General::StatusTypeDef ICM42688P::General::disable_acc(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1534,7 +1525,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_acc(void)
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GYRO_FS fs, GYRO_UIF_LN UIF_bw, GYRO_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH NF_enable, uint16_t NF_certenfreq_x, uint16_t NF_certenfreq_y, uint16_t NF_certenfreq_z, NF_BW NF_bw, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_gyro(GYRO_ODR odr, GYRO_FS fs, GYRO_UIF_LN UIF_bw, GYRO_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH NF_enable, uint16_t NF_certenfreq_x, uint16_t NF_certenfreq_y, uint16_t NF_certenfreq_z, NF_BW NF_bw, ICM42688_SWITCH AAF_enable, uint8_t AAF_DELT, uint16_t AAF_DELTSQR, uint8_t AAF_BITSHIFT)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1583,7 +1574,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GY
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GYRO_FS fs, GYRO_UIF_LN UIF_bw, GYRO_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH NF_enable, ICM42688_SWITCH AAF_enable)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_gyro(GYRO_ODR odr, GYRO_FS fs, GYRO_UIF_LN UIF_bw, GYRO_ORDER_UIF UIF_order, ICM42688_SWITCH M2F_enable, ICM42688_SWITCH NF_enable, ICM42688_SWITCH AAF_enable)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1652,7 +1643,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GY
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GYRO_FS fs, FILTER_LEVEL filter_level)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_gyro(GYRO_ODR odr, GYRO_FS fs, FILTER_LEVEL filter_level)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1777,7 +1768,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_gyro(GYRO_ODR odr, GY
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::disable_gyro(void)
+ICM42688P::General::StatusTypeDef ICM42688P::General::disable_gyro(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1841,7 +1832,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_gyro(void)
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(TEMP_DLPF_BW DLPF_bw)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_temp(TEMP_DLPF_BW DLPF_bw)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1879,7 +1870,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(TEMP_DLPF_BW DLP
     return res;
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(void)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_temp(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1919,7 +1910,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_temp(void)
     return res;  
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::disable_temp(void)
+ICM42688P::General::StatusTypeDef ICM42688P::General::disable_temp(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1935,7 +1926,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_temp(void)
     return res; 
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_tmst(TMST_RESOL resol)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_tmst(TMST_RESOL resol)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1961,7 +1952,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_tmst(TMST_RESOL resol
     return res; 
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::enable_tmst(void)
+ICM42688P::General::StatusTypeDef ICM42688P::General::enable_tmst(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1987,7 +1978,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::enable_tmst(void)
     return res; 
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::disable_tmst(void)
+ICM42688P::General::StatusTypeDef ICM42688P::General::disable_tmst(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -1999,7 +1990,7 @@ ICM42688::General::StatusTypeDef ICM42688::General::disable_tmst(void)
     return res; 
 }
 
-ICM42688::General::StatusTypeDef ICM42688::General::read_data(void)
+ICM42688P::General::StatusTypeDef ICM42688P::General::read_data(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data[3] = {0};
@@ -2113,56 +2104,56 @@ ICM42688::General::StatusTypeDef ICM42688::General::read_data(void)
     return res;
 }
 
-float ICM42688::General::get_ax(void)
+float ICM42688P::General::getAccelX(void)
 {
     _ax = (float)_ax_raw / ACCLE_FS_SENSITIVITY[_acc_fs] * g + _acc_offset_x;
 
     return _ax;
 }
 
-float ICM42688::General::get_ay(void)
+float ICM42688P::General::getAccelY(void)
 {
     _ay = (float)_ay_raw / ACCLE_FS_SENSITIVITY[_acc_fs] * g + _acc_offset_y;
     return _ay;
 }
 
-float ICM42688::General::get_az(void)
+float ICM42688P::General::getAccelZ(void)
 {
     _az = (float)_az_raw / ACCLE_FS_SENSITIVITY[_acc_fs] * g + _acc_offset_z;
     return _az;
 }
 
-float ICM42688::General::get_gx(void)
+float ICM42688P::General::getGyroX(void)
 {
     _gx = (float)_gx_raw / GYRO_FS_SENSITIVITY[_gyro_fs] + _gyro_offset_x;
     return _gx;
 }
 
-float ICM42688::General::get_gy(void)
+float ICM42688P::General::getGyroY(void)
 {
     _gy = (float)_gy_raw / GYRO_FS_SENSITIVITY[_gyro_fs] + _gyro_offset_y;
     return _gy;
 }
 
-float ICM42688::General::get_gz(void)
+float ICM42688P::General::getGyroZ(void)
 {
     _gz = (float)_gz_raw / GYRO_FS_SENSITIVITY[_gyro_fs] + _gyro_offset_z;
     return _gz;
 }
 
-float ICM42688::General::get_temp(void)
+float ICM42688P::General::getTemperature(void)
 {
     _temp = (float)_temp_raw / 132.48f + 25;
     return _temp;
 }
 
-float ICM42688::General::get_tmst_fsync(void)
+float ICM42688P::General::getTimeStampFsync(void)
 {
     _tmst_fsync = (float)_tmst_fsync_raw / 1000;
     return _tmst_fsync;
 }
 
-float ICM42688::General::get_tmst(void)
+float ICM42688P::General::getTimeStamp(void)
 {
     _tmst = _tmst_raw / 1000;
     return _tmst;
@@ -2172,36 +2163,36 @@ float ICM42688::General::get_tmst(void)
 
 //###########################################################################################################
 
-ICM42688::FIFO::FIFO(ICM42688* parent)
+ICM42688P::FIFO::FIFO(ICM42688P* parent)
     : _parent(parent)
 {
 }
 
-ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::FIFO::StatusTypeDef ICM42688P::FIFO::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688::ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688P::ICM42688_StatusTypeDef::OK;
 
     res = _parent->readReg(reg, pdata, len);
-    if(res != ICM42688::ICM42688_StatusTypeDef::OK)
-        return ICM42688::FIFO::StatusTypeDef::ERROR;
+    if(res != ICM42688P::ICM42688_StatusTypeDef::OK)
+        return ICM42688P::FIFO::StatusTypeDef::ERROR;
     else
-        return ICM42688::FIFO::StatusTypeDef::OK;
+        return ICM42688P::FIFO::StatusTypeDef::OK;
 }
 
-ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::FIFO::StatusTypeDef ICM42688P::FIFO::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688::ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688P::ICM42688_StatusTypeDef::OK;
 
     res = _parent->writeReg(reg, pdata, len);
-    if(res != ICM42688::ICM42688_StatusTypeDef::OK)
-        return ICM42688::FIFO::StatusTypeDef::ERROR;
+    if(res != ICM42688P::ICM42688_StatusTypeDef::OK)
+        return ICM42688P::FIFO::StatusTypeDef::ERROR;
     else
-        return ICM42688::FIFO::StatusTypeDef::OK;
+        return ICM42688P::FIFO::StatusTypeDef::OK;
 }
 
 //-----------------------------------------------------------------------------------------------------------
 
-ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::enable(FIFO_MODE_1 fifo_mode_1, FIFO_MODE_2 fifo_mode_2, FIFO_MODE_3 fifo_mode_3, ICM42688_SWITCH acc_enable, ICM42688_SWITCH gyro_enable, ICM42688_SWITCH temp_enable, ICM42688_SWITCH timestamp_enable)
+ICM42688P::FIFO::StatusTypeDef ICM42688P::FIFO::enable(FIFO_MODE_1 fifo_mode_1, FIFO_MODE_2 fifo_mode_2, FIFO_MODE_3 fifo_mode_3, ICM42688_SWITCH acc_enable, ICM42688_SWITCH gyro_enable, ICM42688_SWITCH temp_enable, ICM42688_SWITCH timestamp_enable)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
@@ -2210,7 +2201,7 @@ ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::enable(FIFO_MODE_1 fifo_mode_1, FI
     return res;
 } 
 
-ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::disable(void)
+ICM42688P::FIFO::StatusTypeDef ICM42688P::FIFO::disable(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
@@ -2223,7 +2214,7 @@ ICM42688::FIFO::StatusTypeDef ICM42688::FIFO::disable(void)
 
 //###########################################################################################################
 
-ICM42688::INT::INT(ICM42688* parent)
+ICM42688P::INT::INT(ICM42688P* parent)
     : _parent(parent)
 {
     // 初始化所有事件
@@ -2252,29 +2243,29 @@ ICM42688::INT::INT(ICM42688* parent)
     _TAP_DET_INT_state = false;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::readReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688::ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688P::ICM42688_StatusTypeDef::OK;
 
     res = _parent->readReg(reg, pdata, len);
-    if(res != ICM42688::ICM42688_StatusTypeDef::OK)
-        return ICM42688::INT::StatusTypeDef::ERROR;
+    if(res != ICM42688P::ICM42688_StatusTypeDef::OK)
+        return ICM42688P::INT::StatusTypeDef::ERROR;
     else
-        return ICM42688::INT::StatusTypeDef::OK;
+        return ICM42688P::INT::StatusTypeDef::OK;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::writeReg(uint8_t reg, uint8_t* pdata, uint16_t len)
 {
-    ICM42688::ICM42688_StatusTypeDef res = ICM42688::ICM42688_StatusTypeDef::OK;
+    ICM42688P::ICM42688_StatusTypeDef res = ICM42688P::ICM42688_StatusTypeDef::OK;
 
     res = _parent->writeReg(reg, pdata, len);
-    if(res != ICM42688::ICM42688_StatusTypeDef::OK)
-        return ICM42688::INT::StatusTypeDef::ERROR;
+    if(res != ICM42688P::ICM42688_StatusTypeDef::OK)
+        return ICM42688P::INT::StatusTypeDef::ERROR;
     else
-        return ICM42688::INT::StatusTypeDef::OK;
+        return ICM42688P::INT::StatusTypeDef::OK;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::set_int_source(INT_NUM int_num, IntEvent event, bool enable)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::set_int_source(INT_NUM int_num, IntEvent event, bool enable)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -2413,7 +2404,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int_source(INT_NUM int_num, IntE
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::get_int_state(void)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::get_clr_int_state(void)
 {
     // 读取中断状态寄存器
     StatusTypeDef res = StatusTypeDef::OK;
@@ -2453,7 +2444,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::get_int_state(void)
 
 //-----------------------------------------------------------------------------------------------------------
 
-ICM42688::ICM42688_StatusTypeDef ICM42688::INT::begin(void)
+ICM42688P::ICM42688_StatusTypeDef ICM42688P::INT::begin(void)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -2463,18 +2454,18 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::INT::begin(void)
     #endif
 
     res = readReg(REG_INT_CONFIG1, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
     reg_data = (reg_data & 0xF7) | 0x01;
     res = writeReg(REG_INT_CONFIG1, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     _parent->icm_delay(10);
 
     res = readReg(REG_INT_CONFIG1, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
     reg_data = (reg_data & 0xF7) | 0x00;
     res = writeReg(REG_INT_CONFIG1, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     #ifdef ENABLE_DEBUG
         printf("INT reset OK.\n");
@@ -2482,23 +2473,23 @@ ICM42688::ICM42688_StatusTypeDef ICM42688::INT::begin(void)
 
     reg_data = 0x00;
     res = writeReg(REG_INT_CONFIG1, &reg_data, 1);
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     #ifdef ENABLE_DEBUG
         printf("Interrupt pulse duration is 100µs.\nThe interrupt de-assertion duration is set to a minimum of 100µs.\n");
     #endif
 
     res = set_int_latchClear_mode();
-    if(res != StatusTypeDef::OK) return ICM42688::ICM42688_StatusTypeDef::ERROR;
+    if(res != StatusTypeDef::OK) return ICM42688P::ICM42688_StatusTypeDef::ERROR;
 
     #ifdef ENABLE_DEBUG
         printf("%sfinish initial the INT.\n", SUCCESS_TYPE);
     #endif
 
-    return ICM42688::ICM42688_StatusTypeDef::OK;
+    return ICM42688P::ICM42688_StatusTypeDef::OK;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::set_int_latchClear_mode(CLEAR_MODE DRDY_clear_mode, CLEAR_MODE FIFO_THS_clear_mode, CLEAR_MODE FIFO_FULL_clear_mode)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::set_int_latchClear_mode(CLEAR_MODE DRDY_clear_mode, CLEAR_MODE FIFO_THS_clear_mode, CLEAR_MODE FIFO_FULL_clear_mode)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -2517,7 +2508,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int_latchClear_mode(CLEAR_MODE D
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::set_int1_pin_cfg(GPIO_TypeDef* int1_port, uint16_t int1_pin, LEVEL level, DRIVE drive, MODE mode)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::set_int1_pin_cfg(GPIO_TypeDef* int1_port, uint16_t int1_pin, LEVEL level, DRIVE drive, MODE mode)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -2553,7 +2544,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int1_pin_cfg(GPIO_TypeDef* int1_
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::set_int2_pin_cfg(GPIO_TypeDef* int2_port, uint16_t int2_pin, LEVEL level, DRIVE drive, MODE mode)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::set_int2_pin_cfg(GPIO_TypeDef* int2_port, uint16_t int2_pin, LEVEL level, DRIVE drive, MODE mode)
 {
     StatusTypeDef res = StatusTypeDef::OK;
     uint8_t reg_data = 0;
@@ -2589,7 +2580,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_int2_pin_cfg(GPIO_TypeDef* int2_
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::register_event(IntEvent event, INT_NUM int_num, IntCallback callback, void* context, EVENT_PRIORITY priority)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::register_event(IntEvent event, INT_NUM int_num, IntCallback callback, void* context, EVENT_PRIORITY priority)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
@@ -2695,7 +2686,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::register_event(IntEvent event, INT_N
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::unregister_event(IntEvent event, INT_NUM int_num)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::unregister_event(IntEvent event, INT_NUM int_num)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
@@ -2749,7 +2740,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::unregister_event(IntEvent event, INT
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::set_event_priority(IntEvent event, INT_NUM int_num, EVENT_PRIORITY priority)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::set_event_priority(IntEvent event, INT_NUM int_num, EVENT_PRIORITY priority)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
@@ -2783,7 +2774,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_event_priority(IntEvent event, I
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::set_event_enable(IntEvent event, INT_NUM int_num, bool enable)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::set_event_enable(IntEvent event, INT_NUM int_num, bool enable)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
@@ -2817,11 +2808,11 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::set_event_enable(IntEvent event, INT
     return res;
 }
 
-ICM42688::INT::StatusTypeDef ICM42688::INT::process_interrupts(INT_NUM int_num)
+ICM42688P::INT::StatusTypeDef ICM42688P::INT::process_interrupts(INT_NUM int_num)
 {
     StatusTypeDef res = StatusTypeDef::OK;
 
-    res = get_int_state();
+    res = get_clr_int_state();
     if (res != StatusTypeDef::OK) return res;
 
     struct ActiveEvent 
@@ -2939,7 +2930,7 @@ ICM42688::INT::StatusTypeDef ICM42688::INT::process_interrupts(INT_NUM int_num)
     return res;
 }
 
-bool ICM42688::INT::is_event_registered(IntEvent event, INT_NUM int_num) const 
+bool ICM42688P::INT::is_event_registered(IntEvent event, INT_NUM int_num) const 
 {
     uint8_t index = static_cast<uint8_t>(event);
     if (index >= static_cast<uint8_t>(IntEvent::NUM_EVENTS))
@@ -2954,7 +2945,7 @@ bool ICM42688::INT::is_event_registered(IntEvent event, INT_NUM int_num) const
 }
 
 #ifdef ENABLE_DEBUG
-void ICM42688::INT::print_int_source(void)
+void ICM42688P::INT::print_int_source(void)
 {
     #ifdef ENABLE_DEBUG
         printf("<=====================================================>\n");
@@ -3060,7 +3051,7 @@ __weak void DATA_RDY_callback(void* context)
 {
     // printf("Data ready! Reading sensor data ...\n");
 
-    (static_cast<ICM42688*>(context))->general.read_data();
+    // (static_cast<ICM42688P*>(context))->general.read_data();
 }
 
 __weak void FIFO_THS_callback(void* context)
